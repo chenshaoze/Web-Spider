@@ -1,0 +1,7 @@
+---
+:concurrency: 2
+:pidfile: ./tmp/pids/sidekiq.pid
+:logfile: ./log/sidekiq.log
+:queues:
+  - [default, 10]
+  - [task_manage, 1]

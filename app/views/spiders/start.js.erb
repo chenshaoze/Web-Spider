@@ -1,0 +1,12 @@
+var a = $("#spider<%= @spider.id %>");
+a.ladda().ladda('stop');
+
+var status = <%= @spider.status %>;
+var text, label_class;
+if (status > 0) {
+  a.find(".ladda-label").text("已启动");
+  a.removeClass("btn-warning").addClass("btn-info");
+} else {
+  a.find(".ladda-label").text("已停止");
+  a.removeClass("btn-info").addClass("btn-warning");
+} 

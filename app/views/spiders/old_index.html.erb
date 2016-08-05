@@ -1,0 +1,24 @@
+<h1>爬虫列表</h1>
+<%= link_to '添加规则', new_spider_path %>
+<%= link_to @task_state, task_spider_path(@task_state == 0 ? 1 : 0), method: :post, remote: true %> 
+
+<table>
+	<tr>
+		<th>名称</th>
+		<th>网址</th>
+		<th>规则</th>
+		<th>操作</th>
+  </tr>
+  <% @spiders.each do |spider| %>
+  <tr>
+  	<td><%= spider.title %></td>
+  	<td><%= spider.url %></td>
+  	<td><%= spider.rule %></td>
+  	<td>
+  		<%= link_to spider.status, start_spider_path(spider.id), method: :post, remote: true %> 
+  		<%= link_to "编辑", edit_spider_path(spider.id) %>
+  		<%= link_to "删除", spider_path(spider.id), method: :delete, data: {confirm: "确定删除？"} %>
+  	</td>
+  </tr>
+  <% end %>
+</table>

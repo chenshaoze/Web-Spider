@@ -1,0 +1,26 @@
+<nav class="navbar-default navbar-static-side" role="navigation">
+    <div class="sidebar-collapse">
+        <ul class="nav metismenu" id="side-menu">
+            <li class="nav-header">
+                <div class="dropdown profile-element">
+                    <a data-toggle="dropdown" class="dropdown-toggle" href="#">
+                        <span class="clear">
+                            <span class="block m-t-xs">
+                                <strong class="font-bold">管理员</strong>
+                            </span> 
+                        </span>
+                    </a>
+                </div>
+                <div class="logo-element">
+                    新闻+
+                </div>
+            </li>
+            <li class="<%= 'active' if current_page?('/') %>">
+                <%= link_to "/" do %>
+                <i class="fa fa-bug"></i> <span class="nav-label">爬虫列表</span>
+                <% end %>
+            </li>
+        </ul>
+
+    </div>
+</nav>
