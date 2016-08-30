@@ -10,12 +10,9 @@ class BaseSpider
 	def initialize(url, source)
 		#本站域名
 		@domain = URI.parse(url).host.downcase
-
 		@source = source
 
-		#获取已记录的最新的新闻发布时间
-		@task = Task.where(source: @source).first
-		@datetime_publish = proc_task(@task)
+		@datetime_publish = proc_task 
 
 		#用于记录当前完成新闻的解析数量
 		@current_item_count = 0
@@ -27,21 +24,32 @@ class BaseSpider
 		#初始化总页数
 		@total_page_count = 0
 
-		log(@source, "start")
+		# 是否有新的记录
+		@new_record_arrived = false
+
+		log(@source, 'start')
+		log(@source, '预设截止时间：', @datetime_publish.to_s)
 		#进行抓取工作
 		call(url)
-		log(@source, "end")
+		# 如果有新的数据，则将数据转至电教馆新闻库
+		TaskManagerJob.perform_later(source) if @new_record_arrived
+		log(@source, 'end')
 	end
 
 	#通过task表记录的情况，判断获取新闻的时间截止点
 	#如果返回nil，则说明没有完整记录过该站的新闻，即程序将该站的新闻全部抓取
-	def proc_task(task)
+	def proc_task()
+		#获取已记录的最新的新闻发布时间
+		@task = Task.where(source: @source).first
+
 		#获取该类新闻的最近的发布时间，用户对比是否有新闻更新
 		#引入task对象是为了容错，只有在抓取工作完成时才会更新task对象中的时间
 		#如果程序意外终止，则task时间不会被更新，那么上次终止任务所录入的数据将会被清除，从而重新进行录入
 		#这样可保证逻辑的正确性
-		datetime_publish = nil
-		if task.nil?
+		#最多仅获取最近两个月的新闻
+		datetime_publish = DateTime.now - 2.month
+		# datetime_publish = nil
+		if @task.nil?
 			#初始化任务时把噪声数据都删掉。
 			#**但这样会有一定的危险性，因此在正式上线时需要考虑是否添加该功能**
 			News.delete_all(["source = ?", @source])
@@ -49,13 +57,14 @@ class BaseSpider
 			@task.source = @source
 			@task.save
 		else
-			datetime_publish = @task.last_item_datetime
 			#清理数据
 			#该数据有可能是未完成的任务所添加的，为了保持逻辑的准确性，须先清理数据
-			if datetime_publish != nil
-				News.delete_all(["source = ? AND publish_at > ?", @source, @datetime_publish])
-			else
+			if @task.last_item_datetime.nil?
 				News.delete_all(["source = ?", @source])
+			else
+				#如果最后一次更新的时间在两个月以内，则以最后一次更新的时间为准
+				datetime_publish = @task.last_item_datetime if @task.last_item_datetime > datetime_publish
+				News.delete_all(["source = ? AND publish_at > ?", @source, datetime_publish])
 			end
 		end
 		return datetime_publish
@@ -67,6 +76,8 @@ class BaseSpider
 		#初始化字符集，默认utf-8
 		#如有不同的字符集，则子类自行重写该方法
 		init_charset()
+
+		url = modify_url(url)
 
 		#获取主url的html内容，如果失败则立即停止抓取过程
 		@doc = get_html_document(url)
@@ -86,18 +97,16 @@ class BaseSpider
 			show_percent()
 
 			# 获取下一页新闻列表
-			if @current_page_number < @total_page_count
-				@current_page_number = @current_page_number + 1	
-				#如果下一页的地址为空, 则结束抓取工作
-				next_page_url = get_next_url(url, @current_page_number)
-				break if next_page_url.nil?
-				#获取失败则立即停止抓取工作
-				@doc = get_html_document(next_page_url)
-				return if @doc.nil?
-			else 
-				#结束抓取工作
-				break
-			end
+			@current_page_number = @current_page_number + 1	
+			#如果超出总页数，则停止抓取
+			break if @current_page_number > @total_page_count
+			
+			#如果下一页的地址为空, 则结束抓取工作
+			next_page_url = get_next_url(url, @current_page_number)
+			break if next_page_url.nil?
+			#获取失败则立即停止抓取工作
+			@doc = get_html_document(next_page_url)
+			return if @doc.nil?
 		end
 
 		#存储最新一条新闻的发布时间，作为下一次抓取新闻的依据
@@ -110,16 +119,21 @@ class BaseSpider
 	#如果为本站页面则按照本站页面的规则进行处理
 	#反之则按照其他规则进行处理
 	def spider_detail(url, detail_item)
-		#增加已获取新闻的条目数
-		@current_item_count = @current_item_count + 1
+		begin
+			#增加已获取新闻的条目数
+			@current_item_count = @current_item_count + 1
 
-		detailUri = get_detail_url(url, detail_item)
-		#判断详细页面是否为本网站的页面
-		if @domain.eql?(detailUri.host.downcase)
-			return spider_localhost_detail(detailUri.to_s, detail_item)
-		else
-			return spider_other_domain_detail(detailUri.to_s, detail_item)
+			detailUri = get_detail_url(url, detail_item)
+			#判断详细页面是否为本网站的页面
+			if @domain.eql?(detailUri.host.downcase)
+				return spider_localhost_detail(detailUri.to_s, detail_item)
+			else
+				return spider_other_domain_detail(detailUri.to_s, detail_item)
+			end
+		rescue Exception => e
+			log(e.message)
 		end
+		return true
 	end
 
 	#获取新闻详细页面的链接
@@ -140,7 +154,7 @@ class BaseSpider
 		begin
 			result = Nokogiri::HTML(open(url), nil, @charset)
 		rescue Exception => e
-			log(e.message)
+			log(url.to_s, e.message)
 		end
 		return result
 	end
@@ -175,7 +189,7 @@ class BaseSpider
 
 	#判断时间是否合法
 	#当新闻的时间大于本次录入数据前数据库中最新的一条记录的新闻发布时间，则即为合法
-	def validate_datetime(datetime, title)
+	def validate_datetime(datetime, title = '')
 		if @datetime_publish.nil?
 			return true
 		end
@@ -195,65 +209,111 @@ class BaseSpider
 					return false
 				end
 		end
-
 		return true
 	end
 
-	# def validate_datetime(datetime)
-	# 	if @datetime_publish.nil?
-	# 		return true
-	# 	end
+	# 整理作者信息
+	# default：默认作者信息如“南昌市教育信息网”
+	# pre：头信息，如“南昌”、“南昌教育”，该信息会适时增加在content前面
+	# content：从页面解析的作者或来源信息
+	def get_author(default, pre, content)
+		# 如果content为空或者为空白，则以默认信息作为作者信息
+		return default if content.nil? || content.length == 0
+		# 如果content包含pre头信息，则直接以content的内容作为作者信息
+		return trim(content) if content.include? pre
+		# 如果content没有包含pre头信息，则以pre+content
+		# 应对content中只包含“市考试院”、“局新闻中心”等
+		return pre + trim(content)
+	end
 
-	# 	if datetime < @datetime_publish
-	# 		log(@datetime_publish.to_s, datetime.to_s)
-	# 		return false
-	# 	elsif datetime == @datetime_publish
-	# 			#有些网站时间发布并不准确，有时仅包含年月日，并没有时分秒
-	# 			#这时需要增加当时间相等的判断逻辑
-	# 			#*********************************
+	# 删除节点中的所有属性
+	def removeAllAttr(node)
+		node.keys.each do |attribute|
+    	node.delete attribute
+  	end
+	end
 
-	# 			#TODO:待补充内容。。。
+	# 从doc中提取html,并判断新闻中是否包含图片
+	def get_content_info(doc, url)
+		# 删除不需要的节点
+		doc.xpath('//comment()').remove
+		doc.css('script').remove
+		doc.css('style').remove
 
-	# 			#*********************************
-	# 			log(@datetime_publish.to_s, datetime.to_s)
-	# 			return false
-	# 	end
+		# 删除所有p标签中的所有属性
+		p_tags = doc.css('p')
+		p_tags.each do |p|
+			removeAllAttr(p)
+		end
 
-	# 	return true
-	# end
+		# 删除所有span标签中的所有属性
+		span_tags = doc.css('span')
+		span_tags.each do |span|
+			removeAllAttr(span)
+		end
 
-	#从doc中获取html
-	def doc_to_html(doc, url)
-		html = doc.to_s
+		# 删除所有div标签中的所有属性
+		div_tags = doc.css('div')
+		div_tags.each do |div|
+			removeAllAttr(div)
+		end
 
-		#将html图片的相对路径改为绝对路径
+		# 是否包含图片
+		has_image = 0
+		# 如果包含，则记录第一张图片的url地址
+		first_image_url = ''
+		# 将img标签中的相对地址换成绝对地址，并添加预设的样式
 		images = doc.css('img')
 		images.each do |image|
 			begin
-				originalSrc = URI::escape(image.attr('src').to_s)
-				absoluteSrc = URI.join(url, originalSrc).to_s
-				html[originalSrc] = absoluteSrc
+				original_src = URI::escape(image.attr('src').to_s)
+				absolute_src = URI.join(url, original_src).to_s
+				removeAllAttr(image)
+				image['src'] = absolute_src
+				image['style'] = 'TEXT-ALIGN: center; MARGIN: 0px auto; DISPLAY: block'
+				image['border'] = '0'
+				image['width'] = '450'
+
+				first_image_url = absolute_src if has_image == 0
+				has_image = 1
 			rescue Exception => e
 				log(e.message)
 			end
 		end
-
-		return html
+		return { 
+						 html: trim(doc.children.to_s).gsub(/&#160;/, ''),
+						 is_pic_news: has_image,
+						 pic_url: first_image_url
+						}
 	end
 
 	#保存新闻，入库
-	def save_news(title, url, publish_at, content_text, content_html)
-		#如果新闻发布时间早于数据库中记录的最新的一条新闻的发布时间，则停止抓取动作
+	def save_news(title, url, author, publish_at, content_doc)
+		# 如果新闻发布时间早于数据库中记录的最新的一条新闻的发布时间，则停止抓取动作
 		return false if !validate_datetime(publish_at, title)
+		# 如果没有内容，则不进行入库操作
+		return true if content_doc.length == 0
 
+		content_hash = get_content_info(content_doc, url)
+
+		@new_record_arrived = true
 		news = News.new
 		news.source = @source
+		news.sync = 0
 		news.url = url
-		news.title = title
+		news.title = trim(title)
+		news.author = author
 		news.publish_at = publish_at
-		news.content = content_text
-		news.html = content_html
+		news.html = content_hash[:html]
+		news.is_pic_news = content_hash[:is_pic_news]
+		news.pic_url = content_hash[:pic_url]
 		return news.save
+	end
+
+	# 去除字符串前后的空白字符
+	def trim(str)
+		# str.gsub(/^(\s|\u00A0)+|(\s|\u00A0)+$/, '')
+		str.gsub(/^\s+|\s+$/, '')
 	end
 
 	#打印日志
@@ -270,6 +330,10 @@ class BaseSpider
 	#初始化页面的字符集，默认为utf-8
 	def init_charset
 		@charset = "utf-8"
+	end
+
+	def modify_url(url)
+		return url
 	end
 
 	#抓取新闻列表前所需的动作
@@ -293,10 +357,14 @@ class BaseSpider
 			news_list.each do |item|
 				#如果抓取详细信息的过程中，出现致命错误或无有效的新闻抓取时，
 				#立即停止抓取工作
-				return false if !spider_detail(url, item)
+				#发现有些网站第一条记录是错乱的，因此不能仅通过一条记录进行判断是否退出
+				# return false if !spider_detail(url, item)
+				whether_next = spider_detail(url, item)
 			end	
 		end
-		return true
+
+		return whether_next
+		# return true
 	end
 
 	#新闻列表css选择

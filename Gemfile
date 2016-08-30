@@ -31,6 +31,9 @@ gem 'sinatra', :require => false
 gem 'sidekiq-status'
 gem 'nokogiri'
 
+# 用于连接sqlserver
+gem 'tiny_tds'
+
 # Use ActiveModel has_secure_password
 # gem 'bcrypt', '~> 3.1.7'
 

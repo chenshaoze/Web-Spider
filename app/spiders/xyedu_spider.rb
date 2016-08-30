@@ -27,17 +27,33 @@ class XyeduSpider < BaseSpider
 		datetime_doc = detail_item.css("p")
 		publish_at = DateTime.strptime(datetime_doc.text, '%Y/%m/%d')
 		
-		content_text = nil
-		content_html = nil
+		# 不能获取详细信息的直接略过
 		doc = get_html_document(url)
-		if doc != nil
-			content_doc = doc.css("#text")
-			content_text = content_doc.text.gsub(/\r/, "")
-			content_text = content_text.gsub(/\n/, "")
-			content_html = doc_to_html(content_doc, url)
-		end
+		return true if doc.nil?
+
+		author_content = doc.css('.timer span')[0].text
+		author_content = author_content.gsub('来源：', '')
+		# author = '新余教育网' if author.length == 0
+		author = get_author('新余教育网', '新余', author_content)
+
+		content_doc = doc.css("#text")
+		#通常新闻的内容包含在样式为Custom_UnionStyle的div里
+		try_content_doc = doc.css('.Custom_UnionStyle')
+		if try_content_doc.length != 0
+		  content_doc = try_content_doc
+		else
+			#也可能仅在样式为TRS_Editor的div里
+		 	try_content_doc = doc.css('.TRS_Editor')
+			content_doc = try_content_doc if try_content_doc.length != 0 
+		end 
+
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text.gsub(/\r/, "")
+		# content_text = content_text.gsub(/\n/, "")
+
 		
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

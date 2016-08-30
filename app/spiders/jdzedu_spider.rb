@@ -29,26 +29,30 @@ class JdzeduSpider < BaseSpider
 
 		# datetime_doc = detail_item.css("td:last-child")
 		# datetime = DateTime.strptime(datetime_doc.text, '%Y年%m月%d日')
-		publish_at = nil
-		content_text = nil
-		content_html = nil
+		
 		doc = get_html_document(url)
-		if doc != nil
-			b_doc = doc.css(".read-prop b")
-			b_doc.each do |item|
-				if item.text.include? "年"
-					publish_at = DateTime.strptime(item.text.gsub(/\s+/, ""), '%Y年%m月%d日%H:%M:%S')
-					break
-				end
+		return true if doc.nil?
+				
+		publish_at = nil
+		b_doc = doc.css(".read-prop b")
+		b_doc.each do |item|
+			if item.text.include? "年"
+				publish_at = DateTime.strptime(item.text.gsub(/\s+/, ""), '%Y年%m月%d日%H:%M:%S')
+				break
 			end
-
-			content_doc = doc.css(".read-content")
-			content_text = content_doc.text.gsub(/\r/, "")
-			content_text = content_text.gsub(/\n/, "")
-			content_html = doc_to_html(content_doc, url)
 		end
 
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		author_content = doc.css('.read-source b').text
+		# author = '景德镇市教育网' if author.length == 0
+		author = get_author('景德镇市教育网', '景德镇', author_content)
+
+		content_doc = doc.css(".read-content")
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text.gsub(/\r/, "")
+		# content_text = content_text.gsub(/\n/, "")
+
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

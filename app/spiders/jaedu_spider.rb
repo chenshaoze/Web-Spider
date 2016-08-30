@@ -28,25 +28,28 @@ class JaeduSpider < BaseSpider
 	#获取本地域名的新闻的详细信息
 	def spider_localhost_detail(url, detail_item)
 		title = detail_item.text
-
-		publish_at = nil
-		content_text = nil
-		content_html = nil
+	
 		doc = get_html_document(url)
-		if doc != nil
-			begin
-				datetime_doc = doc.css(".tdbg_all font")
-				publish_at = DateTime.strptime(datetime_doc.text, '%Y/%m/%d %H:%M:%S')
+		return true if doc.nil?
 
-				content_doc = doc.css(".ArticleBody")
-				content_text = content_doc.text.gsub(/\s+/, "")
-				content_html = doc_to_html(content_doc, url)
-			rescue Exception => e
-				log(e.message)
-			end
-		end
+		info_doc = doc.css(".tdbg_all")
+		
+		datetime_doc = info_doc.css('font')
+		publish_at = DateTime.strptime(datetime_doc.text, '%Y/%m/%d %H:%M:%S')
+
+		# author_content = info_doc.css('.articleinfo_other a').text
+		# author = '吉安教育网' if author.length == 0
+		# author = get_author('吉安教育网', '吉安', author_content)
+		# 录入（作者信息） 均为admin、mark之类，没有意义，因此同意采用‘吉安教育网’
+		author = '吉安教育网'
+
+		content_doc = doc.css(".ArticleBody")
+		content_doc.css('table')[0].remove
+		# content_text = content_doc.text.gsub(/^\s+/, '')
+		# content_html = doc_to_html(content_doc, url)
 		
 		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

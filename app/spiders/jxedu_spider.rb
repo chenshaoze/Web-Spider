@@ -37,13 +37,18 @@ class JxeduSpider < BaseSpider
 			publish_at = DateTime.strptime(datetime[0], '%Y-%m-%d%H:%M:%S')
 		end
 
-		#抓取内容
-		content_doc = doc.css('td[id=NewsContent]')
-		content_text = content_doc.text
-		content_html = doc_to_html(content_doc, url)
+		author = doc.css("td[width='22%']").text[/稿源：[\u4e00-\u9fa5_a-zA-Z0-9_]*/]
+		author['稿源：'] = ''
+		author = '江西教育网' if author.length == 0
 
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		#抓取内容
+		content_doc = doc.css('#NewsContent').children
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text
+
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 
 end
