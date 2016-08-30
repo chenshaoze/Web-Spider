@@ -31,25 +31,27 @@ class SrjywSpider < BaseSpider
 		sleep(5.seconds)
 		title = detail_item.text
 
-		publish_at = nil
-		content_text = nil
-		content_html = nil
 		doc = get_html_document(url)
-		if doc != nil
-			begin
-				datetime_doc = doc.css(".pagetitle2")
-				datetime = datetime_doc.text.scan(/\d+\/\d+\/\d+/)[0]
-				publish_at = DateTime.strptime(datetime, '%Y/%m/%d')
+		return true if doc.nil?
 
-				content_doc = doc.css("#fontzoom")
-				content_text = content_doc.text
-				content_html = doc_to_html(content_doc, url)
-			rescue Exception => e
-				log(e.message)
-			end
-		end
+		info_doc = doc.css(".pagetitle2")
+		datetime = info_doc.text.scan(/\d+\/\d+\/\d+/)[0]
+		publish_at = DateTime.strptime(datetime, '%Y/%m/%d')
+
+		# author_content = info_doc.text[/作者：[\u4e00-\u9fa5_a-zA-Z0-9_]*/]
+		# author_content['作者：'] = ''
+		# # author = '上饶教育网' if author.length == 0
+		# author = get_author('上饶教育网', '上饶', author_content)
+		# 所有新闻都为“作者：佚名    信息来源：本站原创”，因此作者信息统一采用‘上饶教育网’
+		author = '上饶教育网'
+
+		content_doc = doc.css("#fontzoom")
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text
+
 		
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

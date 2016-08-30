@@ -14,14 +14,17 @@
 ActiveRecord::Schema.define(version: 20160624070530) do
 
   create_table "news", force: :cascade do |t|
-    t.string   "source",     limit: 255,        null: false
-    t.string   "title",      limit: 255
-    t.string   "url",        limit: 255
+    t.string   "source",      limit: 255,        null: false
+    t.integer  "sync",        limit: 4
+    t.string   "author",      limit: 255
+    t.string   "title",       limit: 255
+    t.string   "url",         limit: 255
     t.datetime "publish_at"
-    t.text     "content",    limit: 4294967295
-    t.text     "html",       limit: 4294967295
-    t.datetime "created_at",                    null: false
-    t.datetime "updated_at",                    null: false
+    t.text     "html",        limit: 4294967295
+    t.integer  "is_pic_news", limit: 4
+    t.string   "pic_url",     limit: 255
+    t.datetime "created_at",                     null: false
+    t.datetime "updated_at",                     null: false
   end
 
   create_table "spiders", force: :cascade do |t|

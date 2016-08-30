@@ -5,37 +5,55 @@ class NceduSpider < BaseSpider
 		@charset = "gbk"
 	end
 
-	def spider_news_list(url, doc)
-		news_list = doc.css(".TABLE1")
+	def modify_url(url)
+		new_url = URI.join(url, Time.now.year.to_s + 'nzyxw/')
+		return new_url
+	end
 
-		set_item_count(news_list.length)
-		news_list.each do |item|
-			spider_detail(url, item)
-		end 
+	def before_spider(url, doc)
+		pages_doc = doc.css("form[name='pageForm']")
+		# pages_doc.children.remove
+		pages_doc.css('select').remove
+		page_count_arr = pages_doc.text.scan(/\d+/)
+
+		set_item_count(page_count_arr[0].to_i)
+		set_pages_info(page_count_arr[2].to_i, page_count_arr[1].to_i)
+		return true
+	end
+
+	#新闻列表css选择
+	def get_list_selector
+		return "a[title='$article.name']"
+	end
+
+	def get_next_url(base_url, next_page_number)
+		next_page_url = URI.join(base_url, "index#{next_page_number-1}.htm")
+		return next_page_url
 	end
 
 	#获取本地域名的新闻的详细信息
 	def spider_localhost_detail(url, detail_item)
-		load_detail_page_success = true
 
-		detail_page_content = get_html_document(url)
-		load_detail_page_success = false if detail_page_content.nil?
+		doc = get_html_document(url)
+		return true if doc.nil?
 				
-		title = detail_item.css('a').text
+		title = detail_item.text
 
-		datetime = detail_item.css("div[align='right'] font")
-		publish_at = DateTime.strptime(datetime.text, '[%Y-%m-%d]')
-		
-		content_text = nil
-		content_html = nil
-		if load_detail_page_success
-			content_doc = detail_page_content.css('.newss')
-			content_text = content_doc.text.strip
-			content_html = doc_to_html(content_doc, url)
-		end
-		
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		info_doc = doc.css("td[bgcolor='fff6d3']")
+
+		publish_at = DateTime.strptime(info_doc.text[/\[.+\]/], '[%Y-%m-%d]')
+
+		author_content = info_doc.css('strong').text
+		# author = '南昌教育信息网' if author.length == 0
+		author = get_author('南昌教育信息网', '南昌', author_content)
+
+		content_doc = doc.css('.newss')
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text.strip
+
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 
 end

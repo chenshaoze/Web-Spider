@@ -27,23 +27,34 @@ class YteduySpider < BaseSpider
 	def spider_localhost_detail(url, detail_item)
 		title = detail_item.text
 
-		publish_at = nil
-		content_text = nil
-		content_html = nil
 		doc = get_html_document(url)
-		if doc != nil
-			datetime_doc = doc.css(".Content_ExtField")
-			publish_at = /\d{4}\W\d{1,2}\W\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}/.match(datetime_doc.text)
-			if publish_at[0] != nil
-				publish_at = DateTime.strptime(publish_at[0], '%Y-%m-%d %H:%M:%S')
-			end
+		return true if doc.nil?
 
-			content_doc = doc.css("#_NewsContent")
-			content_text = content_doc.text.gsub(/\s+/, "")
-			content_html = doc_to_html(content_doc, url)
+		info_doc = doc.css(".Content_ExtField")
+		publish_at = /\d{4}\W\d{1,2}\W\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}/.match(info_doc.text)
+		if publish_at[0] != nil
+			publish_at = DateTime.strptime(publish_at[0], '%Y-%m-%d %H:%M:%S')
 		end
+
+		author_content = info_doc.text[/来源：.*/]
+		author_content['来源：'] = ''
+		# author = '鹰潭教育信息网' if author.length == 0
+		author = get_author('鹰潭教育信息网', '鹰潭', author_content)
+
+		content_doc = doc.css("#_NewsContent")
 		
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		try_content_doc = content_doc.css('.TRS_Editor')
+		content_doc = try_content_doc if try_content_doc.length != 0
+
+		try_content_doc = content_doc.css('.TRS_PreAppend')
+		content_doc = try_content_doc if try_content_doc.length != 0
+
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text.gsub(/\s+/, "")
+
+		
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

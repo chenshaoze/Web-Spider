@@ -27,29 +27,27 @@ class JxgzeduSpider < BaseSpider
 	def spider_localhost_detail(url, detail_item)
 		title = detail_item.css("a").text
 
-		publish_at = nil
-		content_text = nil
-		content_html = nil
 		doc = get_html_document(url)
-		if doc != nil
-			begin
-				datetime_doc = doc.css(".info")
-				datetime = /\d{4}\W\d{1,2}\W\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}/.match(datetime_doc.text)
-				if datetime[0] != nil
-					publish_at = DateTime.strptime(datetime[0], '%Y/%m/%d %H:%M:%S')
-				end
+		return true if doc.nil?
 
-				content_doc = doc.css(".TRS_Editor")
-				content_text = content_doc.text.gsub(/\s+/, "")
-				content_html = doc_to_html(content_doc, url)
-			rescue Exception => e
-				log(e.message)
-				datetime_doc = detail_item.css("p").last
-				publish_at = DateTime.strptime(datetime_doc.text, '%Y-%m-%d')
-			end
+		publish_at = nil
+		info_doc = doc.css(".info")
+		datetime = /\d{4}\W\d{1,2}\W\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}/.match(info_doc.text)
+		if datetime[0] != nil
+			publish_at = DateTime.strptime(datetime[0], '%Y/%m/%d %H:%M:%S')
 		end
+
+		author_content = info_doc.text[/作者：[\u4e00-\u9fa5_a-zA-Z0-9_]*/]
+		author_content['作者：'] = ''
+		# author = '赣州教育网' if author.length == 0
+		author = get_author('赣州教育网', '赣州', author_content)
+
+		content_doc = doc.css(".TRS_Editor")
+		# content_text = content_doc.text.gsub(/\s+/, "")
+		# content_html = doc_to_html(content_doc, url)
 		
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

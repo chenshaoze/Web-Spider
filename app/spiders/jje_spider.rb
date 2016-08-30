@@ -36,17 +36,27 @@ class JjeSpider < BaseSpider
 		datetime = datetime_doc.text.strip.split(" ")[1]
 		publish_at = DateTime.strptime(datetime, '%Y-%m-%d')
 
-		content_text = nil
-		content_html = nil
 		doc = get_html_document(url)
-		if doc != nil
-			content_doc = doc.css("#Zoom")
-			content_text = content_doc.text.gsub(/\r/, "")
-			content_text = content_text.gsub(/\n/, "")
-			content_html = doc_to_html(content_doc, url)
-		end
+		return true if doc.nil?
 
-		#保存新闻数据
-		return save_news(title, url, publish_at, content_text, content_html)
+		author_content = doc.css('div.txt14').text[/编辑\s*：[\u4e00-\u9fa5_a-zA-Z0-9_]*/]
+		author_content[/编辑\s*：/] = ''
+		# author = '九江教育网' if author.length == 0
+		# 一般都为jje，因此凡是为jje的直接命名为‘九江教育网’
+		if author_content == 'jje'
+			author = '九江教育网'
+		else
+			author = get_author('九江教育网', '九江', author_content)
+		end
+		
+
+		content_doc = doc.css("#Zoom")
+		# content_html = doc_to_html(content_doc, url)
+		# content_text = content_doc.text.gsub(/\r/, "")
+		# content_text = content_text.gsub(/\n/, "")
+
+		# #保存新闻数据
+		# return save_news(title, url, author, publish_at, content_text, content_html)
+		return save_news(title, url, author, publish_at, content_doc)
 	end
 end

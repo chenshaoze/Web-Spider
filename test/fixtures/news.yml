@@ -2,10 +2,10 @@
 
 one:
   title: MyString
-  news_date: 2016-05-23
-  content_url: MyString
+  publish_at: 2016-05-23
+  url: MyString
 
 two:
   title: MyString
-  news_date: 2016-05-23
-  content_url: MyString
+  publish_at: 2016-05-23
+  url: MyString
