@@ -12,7 +12,6 @@
 //
 //= require jquery/jquery-2.1.1.js
 //= require jquery_ujs
-//= require jquery.turbolinks
 //= require turbolinks
 //= require bootstrap-sprockets
 //= require metisMenu/jquery.metisMenu.js
@@ -20,3 +19,4 @@
 //= require slimscroll/jquery.slimscroll.min.js
 //= require_tree .
 //= require validate/jquery.validate.min.js
+//= require toastr/toastr.min.js

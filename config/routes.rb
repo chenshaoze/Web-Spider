@@ -1,5 +1,9 @@
 Rails.application.routes.draw do
   # get 'welcome/index'
+  get 'login', to: 'sessions#new'
+  post 'login', to: 'sessions#create'
+  get 'logout', to: 'sessions#destroy'
+
   resources :spiders
   post '/spiders/task/:state', to: 'spiders#task', as: 'task_spider'
   post '/spiders/start/:id', to: 'spiders#start', as: 'start_spider'
@@ -10,8 +14,9 @@ Rails.application.routes.draw do
   # You can have the root of your site routed with "root"
   root 'spiders#index'
 
-  require 'sidekiq/web'
-  mount Sidekiq::Web => '/sidekiq'
+  # sidekiq自带统计页面
+  # require 'sidekiq/web'
+  # mount Sidekiq::Web => '/sidekiq'
 
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'

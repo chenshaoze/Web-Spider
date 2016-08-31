@@ -1,5 +1,6 @@
 require 'sidekiq/api'
 class SpidersController < ApplicationController
+	before_action :require_login
 	def index
 		@spiders = Spider.all
 	end

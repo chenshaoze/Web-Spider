@@ -8,9 +8,9 @@
                 <span class="m-r-sm text-muted welcome-message" data-i18n="topnav.welcometext">欢迎使用新闻抓取管理系统</span>
             </li>
             <li>
-                <a href="#">
+                <%= link_to logout_path do %>
                     <i class="fa fa-sign-out"></i> 注销
-                </a>
+                <% end %>
             </li>
         </ul>
     </nav>
