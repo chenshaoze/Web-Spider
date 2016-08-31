@@ -79,6 +79,19 @@
 
   $(function() {
     $( '.ladda-button' ).ladda( 'bind', { timeout: 10000 } );
+
+    var notice = "<%= flash[:notice] %>"
+    if (notice) {
+      setTimeout(function() {
+        toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            showMethod: 'slideDown',
+            timeOut: 2000
+        };
+        toastr.success(notice, '提示');
+      }, 500);
+    }
   });
 
 </script>

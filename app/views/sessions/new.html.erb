@@ -1,0 +1,77 @@
+<div class="loginColumns animated fadeInDown">
+    <div class="row">
+
+        <div class="col-md-6">
+            <h2 class="font-bold">欢迎访问新闻抓取系统</h2>
+
+            <p>
+                系统抓取指定网站的新闻内容，并推送至本地新闻数据库库，从而形成本地站的新闻。
+            </p>
+
+            <p>
+                功能强大，能够自动适配主流的新闻站点。
+            </p>
+
+            <p>
+                操作简便，仅需控制抓取单元的开闭，抓取和数据推送全过程无人值守。
+            </p>
+
+        </div>
+
+
+        <div class="col-md-6">
+            <div class="ibox-content">
+                <%= form_tag '/login', :id => "login", :class => "m-t"  do %>
+                    <div class="form-group">
+                        <%= text_field_tag :username, nil, placeholder: "用户名", class: "form-control", required: true %>
+                    </div>
+                    <div class="form-group">
+                        <%= password_field_tag :password, nil , placeholder: "密码", class: "form-control", required: true %>
+                    </div>
+                    <button type="submit" class="btn btn-primary block full-width m-b">登录</button>
+                <% end %>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="row">
+        <div class="col-md-6">
+            Copyright 宾果信息技术
+        </div>
+        <div class="col-md-6 text-right">
+            <small>© 2016-2017</small>
+        </div>
+    </div>
+</div>
+
+
+<% content_for :javascript do %>
+<script type="text/javascript">
+
+  $(function() {
+    $("#login").validate();
+
+    toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            showMethod: 'slideDown',
+            timeOut: 2000
+        };
+
+    var error = "<%= flash[:error] %>"
+    if (error) {
+      setTimeout(function() {
+        toastr.error(error, '错误');
+      }, 500);
+    }
+
+    var notice = "<%= flash[:notice] %>"
+    if (notice) {
+      setTimeout(function() {
+        toastr.success(notice, '提示');
+      }, 500);
+    }
+  });
+
+</script>
+<% end %>
